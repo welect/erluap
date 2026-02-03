@@ -1,6 +1,6 @@
 #include "erluap_nif.h"
 #include "nif_utils.h"
-#include "UaParser.h"
+#include "UaParser"
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
