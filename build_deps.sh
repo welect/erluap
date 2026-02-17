@@ -79,11 +79,17 @@ DownloadLibs() {
 
 CopyFiles() {
     # Copy regex file
-    mkdir -p priv
-    pushd priv
-    rm -f regexes.yaml
-    cp "../$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" regexes.yaml
-    popd
+    local target_priv="priv"
+
+    if [[ -n "${REBAR_BARE_COMPILER_OUTPUT_DIR:-}" && -d "$REBAR_BARE_COMPILER_OUTPUT_DIR" ]]; then
+        # remove trailing slash if present and append /priv
+        target_priv="${REBAR_BARE_COMPILER_OUTPUT_DIR%/}/priv"
+    fi
+
+    mkdir -p "$target_priv"
+    rm -f "$target_priv/regexes.yaml"
+
+    cp "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" "$target_priv/regexes.yaml"
 }
 
 DownloadLibs
