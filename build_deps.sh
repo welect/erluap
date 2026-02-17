@@ -11,11 +11,29 @@ UAP_CPP_DESTINATION="uap-cpp"
 
 UAP_CORE_REPO="https://github.com/ua-parser/uap-core.git"
 UAP_CORE_BRANCH="master"
-UAP_CORE_REV="383604dfd6c7518c152e3bd9b7eda67662b1b343"
+UAP_CORE_REV="0f9aba8d05140e56905833554f637ca0b7c9c1bf"
 UAP_CORE_DESTINATION="uap-core"
 
-if [[ -f "$DEPS_LOCATION/$UAP_CPP_DESTINATION/libuaparser_cpp.a" && -f "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" ]]; then
+CopyFiles() {
+    # Copy regex file
+    local target_priv="priv"
+
+    if [[ -n "${REBAR_BARE_COMPILER_OUTPUT_DIR:-}" && -d "$REBAR_BARE_COMPILER_OUTPUT_DIR" ]]; then
+        # remove trailing slash if present and append /priv
+        target_priv="${REBAR_BARE_COMPILER_OUTPUT_DIR%/}/priv"
+    fi
+
+    mkdir -p "$target_priv"
+    rm -f "$target_priv/regexes.yaml"
+
+    cp "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" "$target_priv/regexes.yaml"
+}
+
+if [[ -f "$DEPS_LOCATION/$UAP_CPP_DESTINATION/build/libuaparser_cpp.a" && -f "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" ]]; then
     echo "uap-cpp and uap-core are already present. Delete them for a fresh checkout."
+    # Copy regexes.yaml to ensure the current version is used and is
+    # at the location given by REBAR_BARE_COMPILER_OUTPUT_DIR if set
+    CopyFiles
     exit 0
 fi
 
@@ -41,7 +59,7 @@ DownloadLibs() {
 
     pushd "$UAP_CPP_DESTINATION"
     fail_check git fetch --depth=1 origin "$UAP_CPP_REV"
-    fail_check git checkout "$UAP_CPP_REV"
+    fail_check git checkout --quiet "$UAP_CPP_REV"
 
     mkdir -p build
     pushd build
@@ -73,18 +91,9 @@ DownloadLibs() {
 
     pushd "$UAP_CORE_DESTINATION"
     fail_check git fetch --depth=1 origin "$UAP_CORE_REV"
-    fail_check git checkout "$UAP_CORE_REV"
+    fail_check git checkout --quiet "$UAP_CORE_REV"
     popd
 
-    popd
-}
-
-CopyFiles() {
-    # Copy regex file
-    mkdir -p priv
-    pushd priv
-    rm -f regexes.yaml
-    cp "../$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" regexes.yaml
     popd
 }
 
