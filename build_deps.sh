@@ -14,7 +14,7 @@ UAP_CORE_BRANCH="master"
 UAP_CORE_REV="383604dfd6c7518c152e3bd9b7eda67662b1b343"
 UAP_CORE_DESTINATION="uap-core"
 
-if [[ -f "$DEPS_LOCATION/$UAP_CPP_DESTINATION/libuaparser_cpp.a" && -f "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" ]]; then
+if [[ -f "$DEPS_LOCATION/$UAP_CPP_DESTINATION/build/libuaparser_cpp.a" && -f "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" ]]; then
     echo "uap-cpp and uap-core are already present. Delete them for a fresh checkout."
     exit 0
 fi
