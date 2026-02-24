@@ -15,8 +15,25 @@ UAP_CORE_BRANCH="master"
 UAP_CORE_REV="b1c64691131b14db5380695cdced89fb11fe5514"
 UAP_CORE_DESTINATION="uap-core"
 
+CopyFiles() {
+    # Copy regex file
+    local target_priv="priv"
+
+    if [[ -n "${REBAR_BARE_COMPILER_OUTPUT_DIR:-}" && -d "$REBAR_BARE_COMPILER_OUTPUT_DIR" ]]; then
+        # remove trailing slash if present and append /priv
+        target_priv="${REBAR_BARE_COMPILER_OUTPUT_DIR%/}/priv"
+    fi
+
+    mkdir -p "$target_priv"
+    rm -f "$target_priv/regexes.yaml"
+
+    cp "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" "$target_priv/regexes.yaml"
+}
+
 if [[ -f "$DEPS_LOCATION/$UAP_CPP_DESTINATION/build/libuaparser_cpp.a" && -f "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" ]]; then
     echo "uap-cpp and uap-core are already present. Delete them for a fresh checkout."
+    # Copy regexes.yaml to ensure the current version is used and at the location given by REBAR_BARE_COMPILER_OUTPUT_DIR if set
+    CopyFiles
     exit 0
 fi
 
@@ -77,20 +94,6 @@ DownloadLibs() {
     popd
 }
 
-CopyFiles() {
-    # Copy regex file
-    local target_priv="priv"
-
-    if [[ -n "${REBAR_BARE_COMPILER_OUTPUT_DIR:-}" && -d "$REBAR_BARE_COMPILER_OUTPUT_DIR" ]]; then
-        # remove trailing slash if present and append /priv
-        target_priv="${REBAR_BARE_COMPILER_OUTPUT_DIR%/}/priv"
-    fi
-
-    mkdir -p "$target_priv"
-    rm -f "$target_priv/regexes.yaml"
-
-    cp "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" "$target_priv/regexes.yaml"
-}
 
 DownloadLibs
 CopyFiles
