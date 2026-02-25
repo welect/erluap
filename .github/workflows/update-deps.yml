@@ -1,0 +1,146 @@
+name: deps-update-daily
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-deps:
+    name: Build deps and update revisions
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        # 26.2.1 is the OTP release we are using in our project
+        # see compatibility table at: https://github.com/erlang/rebar3
+        otp: ["26.2.1"]
+        rebar3: ["3.21.0"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Erlang/OTP ${{ matrix.otp }} and rebar3 ${{ matrix.rebar3 }}
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          rebar3-version: ${{ matrix.rebar3 }}
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake git libyaml-cpp-dev libre2-dev
+
+      - name: Determine latest remote revisions and test build
+        id: prepare
+        run: |
+          set -euo pipefail
+
+          # Parse repo URLs and branches from build_deps.sh
+          UAP_CPP_REPO=$(grep -E '^UAP_CPP_REPO=' build_deps.sh | sed -E 's/.*="(.*)".*/\1/')
+          UAP_CPP_BRANCH=$(grep -E '^UAP_CPP_BRANCH=' build_deps.sh | sed -E 's/.*="(.*)".*/\1/')
+          UAP_CORE_REPO=$(grep -E '^UAP_CORE_REPO=' build_deps.sh | sed -E 's/.*="(.*)".*/\1/')
+          UAP_CORE_BRANCH=$(grep -E '^UAP_CORE_BRANCH=' build_deps.sh | sed -E 's/.*="(.*)".*/\1/')
+
+          echo "uap-cpp repo: $UAP_CPP_REPO (branch: $UAP_CPP_BRANCH)"
+          echo "uap-core repo: $UAP_CORE_REPO (branch: $UAP_CORE_BRANCH)"
+
+          # Get latest commit hashes on the configured branch from remote
+          NEW_CPP_REV=$(git ls-remote "$UAP_CPP_REPO" "refs/heads/$UAP_CPP_BRANCH" | cut -f1 | head -n1)
+          NEW_CORE_REV=$(git ls-remote "$UAP_CORE_REPO" "refs/heads/$UAP_CORE_BRANCH" | cut -f1 | head -n1)
+
+          if [ -z "$NEW_CPP_REV" ] || [ -z "$NEW_CORE_REV" ]; then
+            echo "Failed to determine remote revisions."
+            exit 1
+          fi
+
+          echo "Latest uap-cpp rev: $NEW_CPP_REV"
+          echo "Latest uap-core rev: $NEW_CORE_REV"
+
+          # Save values to workflow outputs and capture current (old) revisions from build_deps.sh
+          OLD_CPP_REV=$(grep -E '^UAP_CPP_REV=' build_deps.sh | sed -E 's/.*="(.*)".*/\1/')
+          OLD_CORE_REV=$(grep -E '^UAP_CORE_REV=' build_deps.sh | sed -E 's/.*="(.*)".*/\1/')
+          echo "OLD_CPP_REV=$OLD_CPP_REV" >> $GITHUB_OUTPUT
+          echo "OLD_CORE_REV=$OLD_CORE_REV" >> $GITHUB_OUTPUT
+          echo "NEW_CPP_REV=$NEW_CPP_REV" >> $GITHUB_OUTPUT
+          echo "NEW_CORE_REV=$NEW_CORE_REV" >> $GITHUB_OUTPUT
+
+          # Back up build_deps.sh so we can restore if build fails
+          cp build_deps.sh build_deps.sh.bak
+
+          # Update the revision variables in build_deps.sh to the newly discovered commits
+          sed -E -i "s#(UAP_CPP_REV=)\"[0-9a-f]{7,40}\"#\\1\"$NEW_CPP_REV\"#" build_deps.sh
+          sed -E -i "s#(UAP_CORE_REV=)\"[0-9a-f]{7,40}\"#\\1\"$NEW_CORE_REV\"#" build_deps.sh
+
+          echo "Compiling the full rebar3 project to ensure the whole project builds with the updated deps..."
+          if rebar3 compile; then
+            echo "rebar3 compile succeeded."
+          else
+            echo "rebar3 compile failed. Restoring original build_deps.sh and exiting non-zero."
+            mv build_deps.sh.bak build_deps.sh
+            exit 1
+          fi
+
+          # Remove backup now that both build_deps.sh and the full project compile succeeded
+          rm -f build_deps.sh.bak
+
+      - name: Commit and push updated revisions
+        if: success()
+        env:
+          OLD_CPP_REV: ${{ steps.prepare.outputs.OLD_CPP_REV }}
+          OLD_CORE_REV: ${{ steps.prepare.outputs.OLD_CORE_REV }}
+          NEW_CPP_REV: ${{ steps.prepare.outputs.NEW_CPP_REV }}
+          NEW_CORE_REV: ${{ steps.prepare.outputs.NEW_CORE_REV }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Only create a commit when at least one revision actually changed.
+          CHANGED=0
+          if [ "${OLD_CPP_REV:-}" != "${NEW_CPP_REV:-}" ]; then
+            CHANGED=1
+          fi
+          if [ "${OLD_CORE_REV:-}" != "${NEW_CORE_REV:-}" ]; then
+            CHANGED=1
+          fi
+
+          if [ "$CHANGED" -eq 0 ]; then
+            echo "No revision changes detected; nothing to commit."
+            exit 0
+          fi
+
+          git add build_deps.sh
+
+          # Ensure there are staged changes to commit
+          if git diff --staged --quiet; then
+            echo "No staged changes to commit."
+            exit 0
+          fi
+
+          # Build commit message including only the changed revisions (shorten SHAs to 7 chars)
+          SHORT_OLD_CPP=$(printf "%.7s" "${OLD_CPP_REV:-}")
+          SHORT_NEW_CPP=$(printf "%.7s" "${NEW_CPP_REV:-}")
+          SHORT_OLD_CORE=$(printf "%.7s" "${OLD_CORE_REV:-}")
+          SHORT_NEW_CORE=$(printf "%.7s" "${NEW_CORE_REV:-}")
+
+          MSG_PARTS=""
+          if [ "${OLD_CPP_REV:-}" != "${NEW_CPP_REV:-}" ]; then
+            MSG_PARTS="UAP_CPP_REV \`${SHORT_OLD_CPP}\` -> \`${SHORT_NEW_CPP}\`"
+          fi
+          if [ "${OLD_CORE_REV:-}" != "${NEW_CORE_REV:-}" ]; then
+            if [ -n "$MSG_PARTS" ]; then
+              MSG_PARTS="$MSG_PARTS and UAP_CORE_REV \`${SHORT_OLD_CORE}\` -> \`${SHORT_NEW_CORE}\`"
+            else
+              MSG_PARTS="UAP_CORE_REV \`${SHORT_OLD_CORE}\` -> \`${SHORT_NEW_CORE}\`"
+            fi
+          fi
+
+          git commit -m "ci: update ${MSG_PARTS}"
+          git push
