@@ -12,7 +12,7 @@ UAP_CPP_CMAKE_VARS="-DBUILD_TESTS=OFF"
 
 UAP_CORE_REPO="https://github.com/ua-parser/uap-core.git"
 UAP_CORE_BRANCH="master"
-UAP_CORE_REV="b1c64691131b14db5380695cdced89fb11fe5514"
+UAP_CORE_REV="383604dfd6c7518c152e3bd9b7eda67662b1b343"
 UAP_CORE_DESTINATION="uap-core"
 
 CopyFiles() {
