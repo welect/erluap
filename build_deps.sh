@@ -4,14 +4,14 @@ CPUS=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu || nproc)
 OS=$(uname -s)
 DEPS_LOCATION="_build/deps"
 
-UAP_CPP_REPO="https://github.com/silviucpp/uap-cpp.git"
+UAP_CPP_REPO="https://github.com/ua-parser/uap-cpp.git"
 UAP_CPP_BRANCH="master"
-UAP_CPP_REV="c79ee67476da54811a79d2b89f694240676032a7"
+UAP_CPP_REV="bc4494ccd1a7ff474d13b5c3e3cf37a6d2c72f52"
 UAP_CPP_DESTINATION="uap-cpp"
 
 UAP_CORE_REPO="https://github.com/ua-parser/uap-core.git"
 UAP_CORE_BRANCH="master"
-UAP_CORE_REV="d2d52fb3201fc38f1b66ada59f9516c76b59f799"
+UAP_CORE_REV="383604dfd6c7518c152e3bd9b7eda67662b1b343"
 UAP_CORE_DESTINATION="uap-core"
 
 if [[ -f "$DEPS_LOCATION/$UAP_CPP_DESTINATION/libuaparser_cpp.a" && -f "$DEPS_LOCATION/$UAP_CORE_DESTINATION/regexes.yaml" ]]; then
@@ -48,13 +48,16 @@ DownloadLibs() {
 
     case "$OS" in
         Darwin)
+            export HOMEBREW_NO_INSTALL_UPGRADE=true
+            export HOMEBREW_NO_INSTALL_CLEANUP=true
+            export HOMEBREW_NO_AUTO_UPDATE=1
             brew install re2 yaml-cpp || true
             YAML_DIR=$(brew --prefix yaml-cpp)
             RE2_DIR=$(brew --prefix re2)
-            fail_check cmake -DCMAKE_CXX_FLAGS="-I$YAML_DIR/include -I$RE2_DIR/include" ..
+            fail_check cmake -DBUILD_SHARED=OFF -DBUILD_STATIC=ON -DBUILD_BENCHMARKS=OFF -DBUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="-I$YAML_DIR/include -I$RE2_DIR/include" ..
             ;;
         *)
-            fail_check cmake ..
+            fail_check cmake -DBUILD_SHARED=OFF -DBUILD_STATIC=ON -DBUILD_BENCHMARKS=OFF -DBUILD_TESTS=OFF ..
             ;;
     esac
 
