@@ -8,6 +8,9 @@ compile_nif: get_deps
 clean_nif:
 	@make -C c_src clean
 
+update_regexes:
+	@scripts/update_regexes.sh
+
 ct:
 	mkdir -p log
 	rebar3 ct --logdir log
