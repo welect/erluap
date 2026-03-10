@@ -58,7 +58,7 @@ DownloadLibs() {
 
     pushd "$UAP_CPP_DESTINATION"
     fail_check git fetch --depth=1 origin "$UAP_CPP_REV"
-    fail_check git checkout "$UAP_CPP_REV"
+    fail_check git checkout --quiet "$UAP_CPP_REV"
 
     mkdir -p build
     pushd build
@@ -90,7 +90,7 @@ DownloadLibs() {
 
     pushd "$UAP_CORE_DESTINATION"
     fail_check git fetch --depth=1 origin "$UAP_CORE_REV"
-    fail_check git checkout "$UAP_CORE_REV"
+    fail_check git checkout --quiet "$UAP_CORE_REV"
     popd
 
     popd
