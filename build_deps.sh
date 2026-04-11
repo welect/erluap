@@ -11,7 +11,7 @@ UAP_CPP_DESTINATION="uap-cpp"
 
 UAP_CORE_REPO="https://github.com/ua-parser/uap-core.git"
 UAP_CORE_BRANCH="master"
-UAP_CORE_REV="383604dfd6c7518c152e3bd9b7eda67662b1b343"
+UAP_CORE_REV="0f9aba8d05140e56905833554f637ca0b7c9c1bf"
 UAP_CORE_DESTINATION="uap-core"
 
 CopyFiles() {
