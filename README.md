@@ -31,6 +31,29 @@ On Ubuntu, install the dependencies using APT:
 sudo apt-get install libyaml-cpp-dev libre2-dev
 ```
 
+### Static Linking (Optional)
+
+The default build links `uap-cpp` statically and links `re2`/`yaml-cpp` dynamically.
+
+To force static linking for native dependencies, run:
+
+```bash
+make compile_nif_static
+```
+
+This mode requires static archives for dependencies (for example `libre2.a`, `libyaml-cpp.a`, and static `libstdc++`) to be available in your toolchain.
+
+You can override each library input explicitly:
+
+```bash
+ERLUAP_STATIC_LINK=1 \
+ERLUAP_UAPCPP_LIB=../_build/deps/uap-cpp/build/libuaparser_cpp.a \
+ERLUAP_RE2_LIB=/path/to/libre2.a \
+ERLUAP_YAMLCPP_LIB=/path/to/libyaml-cpp.a \
+ERLUAP_STDCXX_LIB=-lstdc++ \
+make -C c_src
+```
+
 ### Integration
 
 To add it as a dependency in your project, include the following in your `rebar.config`:

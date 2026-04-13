@@ -5,6 +5,9 @@ get_deps:
 compile_nif: get_deps
 	@make V=0 -C c_src -j 8
 
+compile_nif_static: get_deps
+	@ERLUAP_STATIC_LINK=1 make V=0 -C c_src -j 8
+
 clean_nif:
 	@make -C c_src clean
 
