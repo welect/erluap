@@ -9,7 +9,7 @@
     parse/1
 ]).
 
-%% nif functions
+%% NIF functions
 
 load_nif() ->
     SoName = get_priv_path(?MODULE),
@@ -17,26 +17,21 @@ load_nif() ->
 
     case filelib:file_size(Regexes) > 0 of
         true ->
-            io:format(<<"Loading library: ~p~n">>, [SoName]),
-            io:format(<<"Use regexp file: ~p~n">>, [Regexes]),
-            ok = erlang:load_nif(SoName, Regexes);
-        _ ->
-            throw({error, <<"Regex file not available: ", Regexes/binary>>})
+            case erlang:load_nif(SoName, Regexes) of
+                ok ->
+                    ok;
+                {error, {Reason, Text}} ->
+                    {error, {failed_to_load_nif, SoName, Reason, Text}}
+            end;
+        false ->
+            {error, {regex_file_not_available, Regexes}}
     end.
 
 get_priv_path(File) ->
-    case code:priv_dir(erl_uap) of
-        {error, bad_name} ->
-			Ebin = filename:dirname(code:which(?MODULE)),
-			filename:join([filename:dirname(Ebin), "priv", File]);
-        Dir ->
-            filename:join(Dir, File)
-    end.
+    filename:join(code:priv_dir(erluap), File).
 
 not_loaded(Line) ->
     erlang:nif_error({not_loaded, [{module, ?MODULE}, {line, Line}]}).
 
 parse(_UserAgent) ->
     ?NOT_LOADED.
-
-
