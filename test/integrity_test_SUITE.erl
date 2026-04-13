@@ -3,9 +3,9 @@
 -include("erluap.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
--define(TEST_DEVICE, <<"../../_build/deps/uap-core/tests/test_device.yaml">>).
--define(TEST_OS, <<"../../_build/deps/uap-core/tests/test_os.yaml">>).
--define(TEST_UA, <<"../../_build/deps/uap-core/tests/test_ua.yaml">>).
+-define(TEST_DEVICE, "test_device.yaml").
+-define(TEST_OS, "test_os.yaml").
+-define(TEST_UA, "test_ua.yaml").
 
 -compile(export_all).
 
@@ -49,13 +49,25 @@ run_browser_tests(_Config) ->
 
 % internals
 
-load_testing_user_agents(File) ->
-    application:ensure_all_started(yamerl),
+load_testing_user_agents(FileName) ->
+    File = filename:join(uap_core_tests_dir(), FileName),
     [[{"test_cases", Tests}]] = yamerl:decode_file(File),
-    {ok,Tests}.
+    {ok, Tests}.
 
-run_agent_tests(File, Type) ->
-    {ok, Tests} = load_testing_user_agents(File),
+uap_core_tests_dir() ->
+    filename:join([project_root_dir(), "_build", "deps", "uap-core", "tests"]).
+
+project_root_dir() ->
+    case os:getenv("PWD") of
+        false ->
+            {ok, Cwd} = file:get_cwd(),
+            Cwd;
+        Dir ->
+            Dir
+    end.
+
+run_agent_tests(FileName, Type) ->
+    {ok, Tests} = load_testing_user_agents(FileName),
 
     Fun = fun(T) ->
         Ua = to_val(proplists:get_value("user_agent_string", T)),
@@ -78,14 +90,16 @@ run_agent_tests(File, Type) ->
                 },
                 ok = ?assertEqual(AgentExpected, Os);
             browser ->
-
-
+                ExpectedPatchMinor = case PatchMinor of
+                    null -> Browser#agent.version_patch_minor;
+                    _ -> PatchMinor
+                end,
                 AgentExpected = #agent{
                     family = Family,
                     version_major = Major,
                     version_minor = Minor,
                     version_patch = Patch,
-                    version_patch_minor = Browser#agent.version_patch_minor
+                    version_patch_minor = ExpectedPatchMinor
                 },
                 ok = ?assertEqual(AgentExpected, Browser)
         end
