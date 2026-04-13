@@ -42,6 +42,15 @@ ERL_NIF_TERM devicetype2term(uap_cpp::DeviceType device_type)
 
 }
 
+void on_nif_unload(ErlNifEnv* env, void* priv_data)
+{
+    UNUSED(env);
+    UNUSED(priv_data);
+
+    delete uap_;
+    uap_ = nullptr;
+}
+
 int on_nif_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 {
     UNUSED(priv_data);
@@ -63,6 +72,7 @@ int on_nif_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 
     try
     {
+        on_nif_unload(env, nullptr);
         uap_ = new uap_cpp::UserAgentParser(regexes_path);
     }
     catch (...)
