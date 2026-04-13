@@ -8,14 +8,19 @@
     is_spider/1
 ]).
 
+-type parse_error() :: {error, term()}.
+-type parse_result() :: {device(), os(), browser()} | parse_error().
+-type parse_as_proplist_result() ::
+    [{device, list()} | {os, list()} | {browser, list()}] | parse_error().
+
 -spec parse(binary() | iolist()) ->
-    {device(), os(), browser()}.
+    parse_result().
 
 parse(UserAgent) ->
     erluap_nif:parse(UserAgent).
 
 -spec parse_as_proplist(binary() | iolist()) ->
-    list().
+    parse_as_proplist_result().
 
 parse_as_proplist(UserAgent) ->
     case erluap_nif:parse(UserAgent) of
